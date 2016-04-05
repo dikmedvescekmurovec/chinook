@@ -1,3 +1,5 @@
+const SONGS_PER_PAGE = 20;
+
 if (!process.env.PORT)
   process.env.PORT = 8080;
 
@@ -9,7 +11,7 @@ var db = new sqlite3.Database('chinook.sl3');
 var artists = function(page, artist, details, callback) {
   db.all("SELECT Artist.ArtistId, Name, StarsNo " +
     "FROM Artist, Stars WHERE Artist.ArtistId = Stars.ArtistId " +
-    "ORDER BY Name LIMIT 33 OFFSET ($page - 1) * 33",
+    "ORDER BY Name LIMIT " + SONGS_PER_PAGE + " OFFSET ($page - 1) * " + SONGS_PER_PAGE,
     {$page: page}, function(error, rows) {
       if (error) {
         console.log(error);
@@ -18,7 +20,7 @@ var artists = function(page, artist, details, callback) {
         var result = '<div id="artists">';
         for (var i = 0; i < rows.length; i++) {
           var selected = rows[i].ArtistId == artist;
-          result += '<div id="' + rows[i].ArtistId + '"><span class="numbers">' + (page * 33 + i - 32) + '.</span>' +
+          result += '<div id="' + rows[i].ArtistId + '"><span class="numbers">' + (page * SONGS_PER_PAGE + i - (SONGS_PER_PAGE-1)) + '.</span>' +
             '<a href="/artists/' + page + (!selected? '/details/' + rows[i].ArtistId: '') + '#' + rows[i].ArtistId + '">' +
             '<button type="button" class="btn btn-default' + (selected? ' selected': '') + '">' +
             rows[i].Name + '</button></a><span class="stars">';
@@ -93,9 +95,15 @@ var genres = function(artist, callback) {
         console.log(error);
         callback('<strong>Something went wrong!</strong>');
       } else {
-        var result = '<h5>Genres</h5><div id="genres">' + 
-          'No genres for this artist' + 
-          '</div>';
+        
+        var result = '<h5>Genres</h5><div id="genres">';
+        var i;
+        for(i = 0; i < rows.length; i++){
+             result += rows[i].Name;
+             if(i < rows.length-1)
+             result += " | ";
+        }
+        result += '</div>';
         callback(result);
       }
   });
@@ -111,6 +119,10 @@ app.set('view engine', 'ejs');
 
 /* responds with first page's artists */
 app.get('/artists', function(request, response) {
+  response.redirect('/artists/1');
+});
+
+app.get('/', function(request, response){
   response.redirect('/artists/1');
 });
 
@@ -187,8 +199,10 @@ app.get('/pages', function(request, response) {
       console.log(error);
       response.sendStatus(500);
     } else
-      response.send({pages: Math.ceil(row.Artists / 33)});
+      response.send({pages: Math.ceil(row.Artists / SONGS_PER_PAGE)});
   });
 });
 
-
+app.listen(process.env.PORT, function() {
+  console.log("Strežnik posluša na portu " + process.env.PORT + ".");
+});
